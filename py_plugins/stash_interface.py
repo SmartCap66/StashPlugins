@@ -430,7 +430,6 @@ class StashInterface:
                 count
                 scenes {
                     id
-                    title
                     url
                 }
             }
@@ -486,7 +485,7 @@ class StashInterface:
         return result.get('scrapeSceneURL')
 
     # This method wipes rating, tags, performers, gallery and movie if omitted
-    def scrapeScene(self, scene_data):
+    def scrapeScene(self, scene_data, scraper_id='ThePornDB'):
         query = """
             query($scraper_id: ID!, $scene: SceneUpdateInput!) {
                 scrapeScene(scraper_id: $scraper_id, scene: $scene) {
@@ -496,7 +495,7 @@ class StashInterface:
         """
 
         variables = {
-            'scraper_id': "Bing",
+            'scraper_id': scraper_id,
             'scene': scene_data
         }
 
