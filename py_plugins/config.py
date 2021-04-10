@@ -1,3 +1,6 @@
+# Tag name used for selecting scenes to bulk scrape
+control_tag = '0.scrape'
+
 # Create missing performers/tags/studios
 # Default: False (Prevent Stash from getting flooded with weird values)
 create_missing_performers = False

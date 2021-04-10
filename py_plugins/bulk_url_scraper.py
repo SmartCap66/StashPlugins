@@ -8,7 +8,10 @@ import config
 from stash_interface import StashInterface
 
 # Name of the tag, that will be used for selecting scenes for bulk scraping
-control_tag = "scrape"
+try:
+    control_tag = config.control_tag
+except AttributeError:
+    control_tag = 'scrape'
 
 
 def main():
@@ -42,6 +45,9 @@ def run(json_input, output):
 		if mode_arg == "" or mode_arg == "scrape":
 			client = StashInterface(json_input["server_connection"])
 			bulk_scrape(client)
+		elif mode_arg == "scrapeurl":
+			client = StashInterface(json_input["server_connection"])
+			bulk_scrape_scene_url(client)
 		elif mode_arg == "create":
 			client = StashInterface(json_input["server_connection"])
 			add_tag(client)
@@ -152,6 +158,57 @@ def __bulk_scrape(client, scenes, create_missing_performers=False, create_missin
 
 	return count
 
+def __bulk_scrape_scene_url(client, scenes, delay=5):
+	last_request = -1
+	if delay > 0:
+		# Initialize last request with current time + delay time
+		last_request = time.time() + delay
+
+	# Number of scraped scenes
+	count = 0
+
+	total = len(scenes)
+	# Index for progress bar
+	i = 0
+
+	# Scrape with title
+	for scene in scenes:
+		# Update status bar
+		i += 1
+		log.LogProgress(i/total)
+
+		if scene.get('title') is None or scene.get('title') == "":
+			log.LogInfo(f"Scene {scene.get('id')} is missing title")
+			continue
+
+		if delay:
+			wait(delay, last_request, time.time())
+		# Create dict with scene data
+		scene_data = {
+			'id': scene.get('id'),
+			'title': scene.get('title')
+		}
+		scraped_data = client.scrapeScene(scene_data)
+
+		# No data has been found for this scene
+		if not any(scraped_data.values()):
+			log.LogInfo(f"Could not get data for scene {scene.get('id')}")
+			continue
+
+		# Create dict with scene data
+		update_data = {
+			'id': scene.get('id')
+		}
+		if scraped_data.get('url'):
+			update_data['url'] = scraped_data.get('url')
+
+		# Update scene with scraped scene data
+		client.updateScene(update_data)
+		log.LogDebug(f"Scraped data for scene {scene.get('id')}")
+		count += 1
+
+	return count
+
 
 def bulk_scrape(client, create_missing_performers=False, create_missing_tags=False, create_missing_studios=False, delay=5):
 	try:
@@ -182,6 +239,31 @@ def bulk_scrape(client, create_missing_performers=False, create_missing_tags=Fal
 	scenes = client.findScenesByTags(tag_ids)
 	log.LogInfo(f'Found {len(scenes)} scenes with scrape tag')
 	count = __bulk_scrape(client, scenes, create_missing_performers, create_missing_tags, create_missing_studios, delay)
+	log.LogInfo(f'Scraped data for {count} scenes')
+
+def bulk_scrape_scene_url(client, delay=5):
+	try:
+		delay = int(config.delay)
+	except AttributeError as e:
+		log.LogWarning(e)
+		log.LogWarning("Using defaults for missing config values")
+	except ValueError as e:
+		log.LogWarning(e)
+		log.LogWarning("Using defaults for wrong values")
+
+	log.LogInfo('##### Bulk Scene URL Scraper #####')
+	log.LogInfo(f'delay: {delay}')
+	log.LogInfo('#############################')
+
+	# Search for all scenes with scrape tag
+	tag = client.findTagIdWithName(control_tag)
+	if tag is None:
+		sys.exit("Tag scrape does not exist. Please create it via the 'Create scrape tag' task")
+
+	tag_ids = [tag]
+	scenes = client.findScenesByTags(tag_ids)
+	log.LogInfo(f'Found {len(scenes)} scenes with scrape tag')
+	count = __bulk_scrape_scene_url(client, scenes, delay)
 	log.LogInfo(f'Scraped data for {count} scenes')
 
 

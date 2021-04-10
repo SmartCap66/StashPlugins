@@ -430,6 +430,7 @@ class StashInterface:
                 count
                 scenes {
                     id
+                    title
                     url
                 }
             }
@@ -483,6 +484,24 @@ class StashInterface:
 
         result = self.__callGraphQL(query, variables)
         return result.get('scrapeSceneURL')
+
+    # This method wipes rating, tags, performers, gallery and movie if omitted
+    def scrapeScene(self, scene_data):
+        query = """
+            query($scraper_id: ID!, $scene: SceneUpdateInput!) {
+                scrapeScene(scraper_id: $scraper_id, scene: $scene) {
+                    url
+                }
+            }
+        """
+
+        variables = {
+            'scraper_id': "Bing",
+            'scene': scene_data
+        }
+
+        result = self.__callGraphQL(query, variables)
+        return result.get('scrapeScene')
 
     def createStudio(self, name, url=None):
         query = """
