@@ -8,7 +8,10 @@ import config
 from stash_interface import StashInterface
 
 # Name of the tag, that will be used for selecting scenes for bulk scraping
-control_tag = "scrape"
+try:
+    control_tag = config.control_tag
+except AttributeError:
+    control_tag = 'scrape'
 
 
 def main():
