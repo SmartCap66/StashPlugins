@@ -19,3 +19,7 @@ tasks:
     description: Scrape scene information for all scenes with the "scrape" tag. This action will overwrite all previous scene information
     defaultArgs:
       mode: scrape
+  - name: Create performer from filename
+    description: Parse filename for performer name and create performer if it doesn't already exist.
+    defaultArgs:
+      mode: createperformer
