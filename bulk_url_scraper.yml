@@ -19,3 +19,7 @@ tasks:
     description: Scrape scene information for all scenes with the "scrape" tag. This action will overwrite all previous scene information
     defaultArgs:
       mode: scrape
+  - name: Scrape scenes url
+    description: Scrape scene url for all scenes with the "scrape" tag.
+    defaultArgs:
+      mode: scrapeurl

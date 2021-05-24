@@ -484,6 +484,24 @@ class StashInterface:
         result = self.__callGraphQL(query, variables)
         return result.get('scrapeSceneURL')
 
+    # This method wipes rating, tags, performers, gallery and movie if omitted
+    def scrapeScene(self, scene_data, scraper_id='ThePornDB'):
+        query = """
+            query($scraper_id: ID!, $scene: SceneUpdateInput!) {
+                scrapeScene(scraper_id: $scraper_id, scene: $scene) {
+                    url
+                }
+            }
+        """
+
+        variables = {
+            'scraper_id': scraper_id,
+            'scene': scene_data
+        }
+
+        result = self.__callGraphQL(query, variables)
+        return result.get('scrapeScene')
+
     def createStudio(self, name, url=None):
         query = """
             mutation($name: String!, $url: String) {
