@@ -58,13 +58,13 @@ class StashInterface:
                     mutation {
                         metadataScan (
                             input: {
-                                useFileMetadata: true 
+                                useFileMetadata: true
                                 scanGenerateSprites: false
                                 scanGeneratePreviews: false
                                 scanGenerateImagePreviews: false
                                 stripFileExtension: false
                             }
-                        ) 
+                        )
                     }
             """
             result = self.__callGraphQL(query)
@@ -75,7 +75,7 @@ class StashInterface:
                             input: {
                                 useFileMetadata: true
                             }
-                        ) 
+                        )
                     }
             """
             result = self.__callGraphQL(query)
@@ -430,7 +430,12 @@ class StashInterface:
                 count
                 scenes {
                     id
+                    path
                     url
+                    performers {
+                        id
+                        name
+                    }
                 }
             }
         }
@@ -543,3 +548,8 @@ class StashInterface:
             if movie.get('name') == name:
                 return movie
         return None
+
+    def listPerformers(self):
+        query = "query {allPerformers {id name aliases}}"
+        result = self.__callGraphQL(query)
+        return result['allPerformers']

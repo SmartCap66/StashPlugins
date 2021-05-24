@@ -2,6 +2,8 @@ import json
 import sys
 from urllib.parse import urlparse
 import time
+import re
+import os
 
 import log
 import config
@@ -48,6 +50,9 @@ def run(json_input, output):
         elif mode_arg == "scrapeurl":
             client = StashInterface(json_input["server_connection"])
             bulk_scrape_scene_url(client)
+        elif mode_arg == "createperformer":
+            client = StashInterface(json_input["server_connection"])
+            bulk_create_performer(client)
         elif mode_arg == "create":
             client = StashInterface(json_input["server_connection"])
             add_tag(client)
@@ -211,6 +216,88 @@ def __bulk_scrape_scene_url(client, scenes, delay=5):
 
     return count
 
+def __bulk_create_performer(client, scenes, create_missing_performers, parse_performer_pattern, delay):
+    last_request = -1
+    if delay > 0:
+        # Initialize last request with current time + delay time
+        last_request = time.time() + delay
+
+    # Number of created performers
+    count = 0
+
+    total = len(scenes)
+    # Index for progress bar
+    i = 0
+
+    # List all performers in database
+    all_performers = client.listPerformers()
+
+    for scene in scenes:
+        # Update status bar
+        i += 1
+        log.LogProgress(i/total)
+
+        if scene.get('path') is None or scene.get('path') == "":
+            log.LogInfo(f"Scene {scene.get('id')} is missing path")
+            continue
+
+        # Parse performer name from scene basename file path
+        scene_basename = os.path.basename(scene['path'])
+        log.LogInfo(f"Scene basename is: {scene_basename}")
+        performer_regex = re.compile(parse_performer_pattern)
+        parsed_performer_regex = performer_regex.search(scene_basename)
+        if parsed_performer_regex is None:
+            log.LogInfo(f"No Performer found Scene {scene.get('id')} filename")
+            continue
+        parsed_performer_name = ' '.join(parsed_performer_regex.groups())
+        log.LogInfo(f"Parsed performer name is: {parsed_performer_name}")
+
+        # If performer name successfully parsed from scene basename
+        if parsed_performer_name:
+            # Create dict with scene data
+            update_data = {
+                'id': scene.get('id')
+            }
+
+            # List all performers currently attached to scene
+            scene_performers = [sp['name'].lower() for sp in scene['performers']]
+            log.LogInfo(f"Current scene performers are: {scene_performers}")
+
+            # Check if performer already attached to scene
+            performer_ids = list()
+            if parsed_performer_name.lower() in scene_performers:
+                continue
+            else:
+                # Check if performer already exists in database
+                for performer in all_performers:
+                    if  performer['name'] and parsed_performer_name.lower() == performer['name'].lower():
+                        performer_ids.append(performer['id'])
+                        break
+                    if performer['aliases'] and parsed_performer_name.lower() in [p.strip().lower() for p in performer['aliases'].replace('/', ',').split(',')]:
+                        performer_ids.append(performer['id'])
+                        break
+                else:
+                    # Create performer if not in database
+                    if create_missing_performers and parsed_performer_name != "":
+                        performer_name = " ".join(x.capitalize() for x in parsed_performer_name.split(" "))
+                        log.LogInfo(f'Create missing performer: {performer_name}')
+                        performer_id = client.createPerformerByName(performer_name)
+                        performer_ids.append(performer_id)
+                        # Add newly created performer to all performers list
+                        all_performers.append({'id':performer_id, 'name':performer_name, 'aliases':''})
+
+                # Add found/created performer IDs to scene update data
+                if len(performer_ids) > 0:
+                    update_data['performer_ids'] = performer_ids
+                    log.LogInfo(f"Performer IDs found: {performer_ids}")
+
+                # Update scene with parsed performer data
+                client.updateScene(update_data)
+                log.LogDebug(f"Updated performer data for scene {scene.get('id')}")
+                count += 1
+
+    return count
+
 
 def bulk_scrape(client, create_missing_performers=False, create_missing_tags=False, create_missing_studios=False, delay=5):
     try:
@@ -243,6 +330,7 @@ def bulk_scrape(client, create_missing_performers=False, create_missing_tags=Fal
     count = __bulk_scrape(client, scenes, create_missing_performers, create_missing_tags, create_missing_studios, delay)
     log.LogInfo(f'Scraped data for {count} scenes')
 
+
 def bulk_scrape_scene_url(client, delay=5):
     try:
         delay = int(config.delay)
@@ -267,6 +355,36 @@ def bulk_scrape_scene_url(client, delay=5):
     log.LogInfo(f'Found {len(scenes)} scenes with scrape tag')
     count = __bulk_scrape_scene_url(client, scenes, delay)
     log.LogInfo(f'Scraped data for {count} scenes')
+
+
+def bulk_create_performer(client, create_missing_performers=False, parse_performer_pattern=r'^.*[ \._]([A-Z][a-zA-Z]+)[ \._]([A-Z][a-zA-Z]+)[ \._].*$', delay=5):
+    try:
+        create_missing_performers = bool(config.create_missing_performers)
+        parse_performer_pattern = config.parse_performer_pattern
+        delay = int(config.delay)
+    except AttributeError as e:
+        log.LogWarning(e)
+        log.LogWarning("Using defaults for missing config values")
+    except ValueError as e:
+        log.LogWarning(e)
+        log.LogWarning("Using defaults for wrong values")
+
+    log.LogInfo('##### Bulk Create Performer #####')
+    log.LogInfo(f'create_missing_performers: {create_missing_performers}')
+    log.LogInfo(f'parse_performer_pattern: {parse_performer_pattern}')
+    log.LogInfo(f'delay: {delay}')
+    log.LogInfo('#############################')
+
+    # Search for all scenes with scrape tag
+    tag = client.findTagIdWithName(control_tag)
+    if tag is None:
+        sys.exit("Scrape Tag does not exist. Please create it via the 'Create scrape tag' task")
+
+    tag_ids = [tag]
+    scenes = client.findScenesByTags(tag_ids)
+    log.LogInfo(f'Found {len(scenes)} scenes with scrape tag')
+    count = __bulk_create_performer(client, scenes, create_missing_performers, parse_performer_pattern, delay)
+    log.LogInfo(f'Created {count} performers')
 
 
 def add_tag(client):

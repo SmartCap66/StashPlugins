@@ -23,3 +23,7 @@ tasks:
     description: Scrape scene url for all scenes with the "scrape" tag.
     defaultArgs:
       mode: scrapeurl
+  - name: Create performer from filename
+    description: Parse filename for performer name and create performer if it doesn't already exist.
+    defaultArgs:
+      mode: createperformer
