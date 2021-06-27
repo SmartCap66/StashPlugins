@@ -71,7 +71,7 @@ def __bulk_scrape(client, scenes, create_missing_performers=False, create_missin
         # Initialize last request with current time + delay time
         last_request = time.time() + delay
 
-	supported_scrapers = client.sceneScraperURLs()
+        supported_scrapers = client.sceneScraperURLs()
     missing_scrapers = list()
 
     # Number of scraped scenes
@@ -95,12 +95,12 @@ def __bulk_scrape(client, scenes, create_missing_performers=False, create_missin
                 wait(delay, last_request, time.time())
             scraped_data = client.scrapeSceneURL(scene.get('url'))
             if scraped_data is None:
-				if urlparse(scene.get('url')).netloc not in supported_scrapers:
-					# If result is null, and url is not in list of supported scrapers, add url to missing_scrapers
-					# Faster then checking every time, if url is in list of supported scrapers
-					log.LogWarning(f"Scene {scene.get('id')}: Missing scraper for {urlparse(scene.get('url')).netloc}")
-					log.LogDebug(f"Full url: {scene.get('url')}")
-                missing_scrapers.append(urlparse(scene.get('url')).netloc)
+                if urlparse(scene.get('url')).netloc not in supported_scrapers:
+                    # If result is null, and url is not in list of supported scrapers, add url to missing_scrapers
+                    # Faster then checking every time, if url is in list of supported scrapers
+                    log.LogWarning(f"Scene {scene.get('id')}: Missing scraper for {urlparse(scene.get('url')).netloc}")
+                    log.LogDebug(f"Full url: {scene.get('url')}")
+                    missing_scrapers.append(urlparse(scene.get('url')).netloc)
                 continue
             # No data has been found for this scene
             if not any(scraped_data.values()):
@@ -202,7 +202,7 @@ def __bulk_scrape_scene_url(client, scenes, delay=5):
             scraped_data = client.scrapeScene(scene_data)
 
         # No data has been found for this scene
-        if not any(scraped_data.values()):
+        if scraped_data is None or not any(scraped_data.values()):
             log.LogInfo(f"Could not get data for scene {scene.get('id')}")
             continue
 
